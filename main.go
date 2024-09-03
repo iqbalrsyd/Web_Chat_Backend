@@ -1,18 +1,26 @@
 package main
 
 import (
-	"chat-backend/database"
-	"chat-backend/routes"
-	"net/http"
-
-	"github.com/gorilla/mux"
+	"chat-backend/config"
+	"chat-backend/internal/database"
+	"chat-backend/internal/router"
+	"log"
 )
 
 func main() {
-	database.ConnectDB()
+	config.LoadConfig()
 
-	r := mux.NewRouter()
-	routes.RegisterRoutes(r)
+	// Connect to the database
+	db, err := database.Connect()
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
 
-	http.ListenAndServe(":8000", r)
+	// Setup the router with the DB connection
+	r := router.SetupRouter(db.DB, config.SecretKey)
+
+	// Start the server
+	if err := r.Run(":8080"); err != nil {
+		log.Fatal("Server run failed:", err)
+	}
 }
