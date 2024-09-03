@@ -1,22 +1,28 @@
-package main
+package database
 
 import (
 	"database/sql"
 	"log"
 
+	"chat-backend/config"
+
 	_ "github.com/lib/pq"
 )
 
-var db *sql.DB
+type Database struct {
+	DB *sql.DB
+}
 
-func initDB() {
-	var err error
-	db, err = sql.Open("postgres", "user=youruser dbname=yourdb password=yourpassword sslmode=disable")
+func Connect() (*Database, error) {
+	db, err := sql.Open("postgres", config.DatabaseURL)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
+
+	log.Println("Successfully connected to database")
+	return &Database{DB: db}, nil
 }
