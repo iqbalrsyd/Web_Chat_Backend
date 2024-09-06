@@ -14,7 +14,7 @@ var (
 
 func LoadConfig() {
 	if err := godotenv.Load(); err != nil {
-		log.Println("Tidak dapat memuat file .env, menggunakan environment variable")
+		log.Println("Cannot load .env file, using environment variables")
 	}
 
 	JWTSecret = getEnv("JWT_SECRET", "defaultsecret")

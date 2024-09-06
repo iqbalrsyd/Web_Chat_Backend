@@ -2,7 +2,6 @@ package user
 
 import (
 	"chat-backend/internal/auth"
-	"chat-backend/internal/database"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -11,7 +10,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Example to clear password after hashing for security
+type User struct {
+	ID           int    `json:"id"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	PasswordHash string `json:"-"`
+}
+
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var u User
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
@@ -28,8 +33,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	u.PasswordHash = string(passwordHash)
 	u.Password = "" // Clear the plaintext password
 
-	// Insert user into database
-	err = database.DB.QueryRow(
+	err = DB.QueryRow(
 		"INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id",
 		u.Username, u.PasswordHash,
 	).Scan(&u.ID)

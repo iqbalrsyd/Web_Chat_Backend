@@ -13,7 +13,7 @@ func SetupRouter(db *sql.DB, secretKey string) *gin.Engine {
 
 	authMiddleware := middleware.JWTAuthMiddleware(secretKey)
 
-	chatHandler := chat.NewChatHandler(db)
+	chatHandler := chat.NewHandler(db) // Ensure the handler is properly initialized
 	r.POST("/chat", authMiddleware, chatHandler.CreateChat)
 	r.GET("/chat/:id", authMiddleware, chatHandler.GetChatByID)
 	r.PUT("/chat/:id", authMiddleware, chatHandler.UpdateChat)
