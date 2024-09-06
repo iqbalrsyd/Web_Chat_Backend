@@ -17,7 +17,7 @@ func main() {
 	}
 
 	// Setup the router with the DB connection
-	r := router.SetupRouter(db.DB, config.SecretKey)
+	r := router.SetupRouter(db.DB, config.JWTSecret)
 
 	// Start the server
 	if err := r.Run(":8080"); err != nil {

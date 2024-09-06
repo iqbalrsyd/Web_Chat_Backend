@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -16,10 +17,10 @@ type Chat struct {
 }
 
 type ChatHandler struct {
-	db *database.database
+	db *sql.DB
 }
 
-func NewHandler(db *database.database) *ChatHandler {
+func NewHandler(db *sql.DB) *ChatHandler {
 	return &ChatHandler{db: db}
 }
 
@@ -30,7 +31,11 @@ func (h *ChatHandler) CreateChat(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Create(&chat).Error; err != nil {
+	_, err := h.db.Exec(
+		"INSERT INTO chats (sender_id, receiver_id, message, created_at) VALUES ($1, $2, $3, $4)",
+		chat.SenderID, chat.ReceiverID, chat.Message, chat.CreatedAt,
+	)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message"})
 		return
 	}
@@ -42,8 +47,13 @@ func (h *ChatHandler) GetChatByID(c *gin.Context) {
 	id := c.Param("id")
 	var chat Chat
 
-	if err := h.db.First(&chat, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Chat not found"})
+	row := h.db.QueryRow("SELECT id, sender_id, receiver_id, message, created_at FROM chats WHERE id = $1", id)
+	if err := row.Scan(&chat.ID, &chat.SenderID, &chat.ReceiverID, &chat.Message, &chat.CreatedAt); err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Chat not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve chat"})
+		}
 		return
 	}
 
@@ -54,8 +64,13 @@ func (h *ChatHandler) UpdateChat(c *gin.Context) {
 	id := c.Param("id")
 	var chat Chat
 
-	if err := h.db.First(&chat, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Chat not found"})
+	row := h.db.QueryRow("SELECT id, sender_id, receiver_id, message, created_at FROM chats WHERE id = $1", id)
+	if err := row.Scan(&chat.ID, &chat.SenderID, &chat.ReceiverID, &chat.Message, &chat.CreatedAt); err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Chat not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve chat"})
 		return
 	}
 
@@ -64,7 +79,11 @@ func (h *ChatHandler) UpdateChat(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Save(&chat).Error; err != nil {
+	_, err := h.db.Exec(
+		"UPDATE chats SET sender_id = $1, receiver_id = $2, message = $3 WHERE id = $4",
+		chat.SenderID, chat.ReceiverID, chat.Message, id,
+	)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update chat"})
 		return
 	}
@@ -74,34 +93,12 @@ func (h *ChatHandler) UpdateChat(c *gin.Context) {
 
 func (h *ChatHandler) DeleteChat(c *gin.Context) {
 	id := c.Param("id")
-	var chat Chat
 
-	if err := h.db.Delete(&chat, id).Error; err != nil {
+	_, err := h.db.Exec("DELETE FROM chats WHERE id = $1", id)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete chat"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Chat deleted"})
-}
-
-func (h *ChatHandler) EditMessage(c *gin.Context) {
-	messageID := c.Param("id")
-	var request struct {
-		Content string `json:"content"`
-	}
-
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-		return
-	}
-
-	userID, _ := c.Get("userID")
-
-	result, err := h.db.Exec("UPDATE messages SET content = $1, edited = true, updated_at = now() WHERE id = $2 AND sender_id = $3", request.Content, messageID, userID)
-	if err != nil || result.RowsAffected() == 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to edit message or message not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Message updated successfully"})
 }
