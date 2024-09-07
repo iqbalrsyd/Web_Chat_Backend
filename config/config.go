@@ -7,18 +7,23 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var (
-	JWTSecret   string
-	DatabaseURL string
-)
+type Config struct {
+	MongoURI  string
+	JWTSecret string
+}
 
-func LoadConfig() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("Cannot load .env file, using environment variables")
+func LoadConfig() (*Config, error) {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found, using environment variables")
 	}
 
-	JWTSecret = getEnv("JWT_SECRET", "defaultsecret")
-	DatabaseURL = getEnv("DATABASE_URL", "postgres://user:password@localhost/dbname?sslmode=disable")
+	config := &Config{
+		MongoURI:  getEnv("MONGO_URI", "mongodb://localhost:27017"),
+		JWTSecret: getEnv("JWT_SECRET", "your-secret-key"),
+	}
+
+	return config, nil
 }
 
 func getEnv(key, defaultValue string) string {
