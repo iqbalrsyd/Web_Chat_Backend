@@ -1,26 +1,28 @@
 package main
 
 import (
-	"chat-backend/config"
-	"chat-backend/internal/database"
-	"chat-backend/internal/router"
+	"chat-backend/internal"
 	"log"
 )
 
 func main() {
-	config.LoadConfig()
-
-	// Connect to the database
-	db, err := database.Connect()
+	// Load settings
+	config, err := internal.LoadConfig()
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Setup the router with the DB connection
-	r := router.SetupRouter(db.DB, config.JWTSecret)
+	// Initialize MongoDB connection
+	db, err := internal.Connect(config.MongoURI)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
 
-	// Start the server
-	if err := r.Run(":8080"); err != nil {
-		log.Fatal("Server run failed:", err)
+	// Setup and run router
+	router := internal.SetupRouter(db)
+	log.Println("Starting server on :8080")
+	if err := router.Run(":8080"); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
