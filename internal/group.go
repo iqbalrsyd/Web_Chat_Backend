@@ -62,3 +62,30 @@ func RemoveMember(db *Database, groupID, userID primitive.ObjectID) error {
 	})
 	return err
 }
+
+func DeleteGroup(db *Database, groupID primitive.ObjectID) error {
+	collection := db.Collection("groups")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := collection.DeleteOne(ctx, bson.M{"_id": groupID})
+	return err
+}
+
+func LeaveGroup(db *Database, groupID, userID primitive.ObjectID) error {
+	collection := db.Collection("groups")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": groupID}, bson.M{"$pull": bson.M{"members": userID}})
+	return err
+}
+
+func InviteFriendToGroup(db *Database, groupID, friendID primitive.ObjectID) error {
+	collection := db.Collection("groups")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": groupID}, bson.M{"$addToSet": bson.M{"members": friendID}})
+	return err
+}

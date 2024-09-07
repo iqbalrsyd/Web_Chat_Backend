@@ -1,13 +1,14 @@
 package main
 
 import (
+	"chat-backend/config"
 	"chat-backend/internal"
 	"log"
 )
 
 func main() {
 	// Load settings
-	config, err := internal.LoadConfig()
+	config, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}

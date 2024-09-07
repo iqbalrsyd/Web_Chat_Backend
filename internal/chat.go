@@ -2,10 +2,12 @@ package internal
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Chat struct {
@@ -36,7 +38,6 @@ func CreateChat(db *Database, chatType string, members []primitive.ObjectID) (*C
 	return &chat, nil
 }
 
-// GetChatByID fetches a chat by its ID
 func GetChatByID(db *Database, chatID primitive.ObjectID) (*Chat, error) {
 	collection := db.Collection("chats")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -46,8 +47,10 @@ func GetChatByID(db *Database, chatID primitive.ObjectID) (*Chat, error) {
 	err := collection.FindOne(ctx, bson.M{"_id": chatID}).Decode(&chat)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, nil // Chat not found
+			log.Println("No chat found with ID:", chatID.Hex()) // Debugging information
+			return nil, nil                                     // Chat not found
 		}
+		log.Println("Error fetching chat:", err) // Log the error for debugging
 		return nil, err
 	}
 
