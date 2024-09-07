@@ -6,84 +6,72 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Settings struct {
-	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID        primitive.ObjectID `bson:"user_id" json:"user_id"` // Menghubungkan ke User
-	Notifications bool               `bson:"notifications" json:"notifications"`
-	Privacy       string             `bson:"privacy" json:"privacy"`   // Contoh: "public", "private"
-	Theme         string             `bson:"theme" json:"theme"`       // Contoh: "dark", "light"
-	Language      string             `bson:"language" json:"language"` // Contoh: "en", "id"
-	LastUpdated   time.Time          `bson:"last_updated" json:"last_updated"`
+	Notifications bool   `bson:"notifications"`
+	Privacy       string `bson:"privacy"`
+	Image         string `bson:"image"`
+	Status        string `bson:"status"`
 }
 
-// Fungsi untuk membuat pengaturan baru
-func CreateSettings(db *mongo.Database, userID primitive.ObjectID) (*Settings, error) {
-	collection := db.Collection("settings")
+// UpdateSettings updates user settings in the database
+func UpdateSettings(db *Database, userID primitive.ObjectID, newSettings Settings) error {
+	collection := db.Collection("users")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	newSettings := Settings{
-		UserID:        userID,
-		Notifications: true,     // Default notification on
-		Privacy:       "public", // Default privacy public
-		Theme:         "light",  // Default theme light
-		Language:      "en",     // Default language English
-		LastUpdated:   time.Now(),
-	}
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": userID}, bson.M{"$set": bson.M{"settings": newSettings}})
+	return err
+}
 
-	_, err := collection.InsertOne(ctx, newSettings)
+// GetSettings retrieves user settings from the database
+func GetSettings(db *Database, userID primitive.ObjectID) (*Settings, error) {
+	var user User
+	collection := db.Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := collection.FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
 	if err != nil {
 		return nil, err
 	}
 
-	return &newSettings, nil
+	return &user.Settings, nil
 }
 
-// Fungsi untuk mendapatkan pengaturan berdasarkan user ID
-func GetSettings(db *mongo.Database, userID primitive.ObjectID) (*Settings, error) {
-	collection := db.Collection("settings")
+// CreateSetting initializes default settings for new users
+func CreateSetting(db *Database, userID primitive.ObjectID, settings Settings) error {
+	collection := db.Collection("users")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	var settings Settings
-	err := collection.FindOne(ctx, bson.M{"user_id": userID}).Decode(&settings)
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": userID}, bson.M{"$set": bson.M{"settings": settings}})
+	return err
+}
+
+// DeleteSetting resets user settings to default
+func DeleteSetting(db *Database, userID primitive.ObjectID) error {
+	collection := db.Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	defaultSettings := Settings{}
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": userID}, bson.M{"$set": bson.M{"settings": defaultSettings}})
+	return err
+}
+
+// ViewSettings retrieves and returns user settings
+func ViewSettings(db *Database, userID primitive.ObjectID) (*Settings, error) {
+	collection := db.Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var user User
+	err := collection.FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil // Tidak ada pengaturan ditemukan
-		}
 		return nil, err
 	}
 
-	return &settings, nil
-}
-
-// Fungsi untuk mengupdate pengaturan pengguna
-func UpdateSettings(db *mongo.Database, userID primitive.ObjectID, updates bson.M) error {
-	collection := db.Collection("settings")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	_, err := collection.UpdateOne(ctx, bson.M{"user_id": userID}, bson.M{"$set": updates})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Fungsi untuk menghapus pengaturan pengguna (misalnya saat pengguna menghapus akun)
-func DeleteSettings(db *mongo.Database, userID primitive.ObjectID) error {
-	collection := db.Collection("settings")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	_, err := collection.DeleteOne(ctx, bson.M{"user_id": userID})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return &user.Settings, nil
 }
