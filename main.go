@@ -1,26 +1,34 @@
 package main
 
 import (
-	"chat-backend/config"
-	"chat-backend/internal"
-	"log"
+    "chat-backend/config"
+    "chat-backend/routes"
+    "github.com/gin-gonic/gin"
 )
 
 func main() {
-	config, err := config.LoadConfig()
-	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
-	}
+    config, err := config.LoadConfig()
+    if err != nil {
+        panic("Failed to load configuration")
+    }
 
-	db, err := internal.Connect(config.MongoURI)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
-	defer db.Close()
+    err = config.ConnectDB()
+    if err != nil {
+        panic("Failed to connect to the database")
+    }
 
-	router := internal.SetupRouter(db)
-	log.Println("Starting server on :8080")
-	if err := router.Run(":8080"); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+    router := gin.Default()
+
+	protected := router.Group("/api")
+    protected.Use(func(c *gin.Context) {
+        middleware.JWTMiddleware(cfg, c.Writer, c.Request)
+    })
+
+    routes.GroupRoutes(router)
+	routes.MessageRoutes(router)
+	routes.NotificationRoutes(router)
+	routes.UserRoutes(router)
+	routes.chatRoutes(router)
+
+    router.Run(":8080")
 }
